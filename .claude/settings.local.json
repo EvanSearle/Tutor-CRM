@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(claude mcp:*)",
+      "Read(//Users/evansearle/.nvm/versions/**)",
+      "Read(//usr/local/bin/**)",
+      "Bash(source ~/.zshrc)",
+      "Bash(npx --version)",
+      "Bash(/bin/zsh -l -c \"which npx && npx --version\" 2>&1)",
+      "Bash(/bin/zsh -l -c \"which node || echo 'no node'; echo $PATH\" 2>&1)",
+      "Bash(/bin/zsh -l -c \"brew install node\" 2>&1)",
+      "Bash(/bin/zsh -l -c \"node --version && npx --version\" 2>&1)",
+      "Bash(/bin/zsh -l -c \"which node; which npx; npx --version\" 2>&1)",
+      "Skill(update-config)",
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --no-git --yes)",
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx next:*)"
+    ]
+  }
+}
