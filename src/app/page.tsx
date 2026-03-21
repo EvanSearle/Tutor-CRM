@@ -129,7 +129,7 @@ export default function DashboardPage() {
               value={String(metrics.active_students)}
               iconColor="text-brand-teal"
               iconBg="bg-brand-teal-light"
-              onClick={() => setDrawer("active")}
+              onClick={() => setDrawer((d) => d === "active" ? null : "active")}
               active={drawer === "active"}
             />
             <MetricCard
@@ -138,7 +138,7 @@ export default function DashboardPage() {
               value={String(metrics.sessions_this_week)}
               iconColor="text-blue-600"
               iconBg="bg-blue-50"
-              onClick={() => setDrawer("sessions")}
+              onClick={() => setDrawer((d) => d === "sessions" ? null : "sessions")}
               active={drawer === "sessions"}
             />
             <MetricCard
@@ -147,7 +147,7 @@ export default function DashboardPage() {
               value={formatCurrency(metrics.unpaid_balance)}
               iconColor="text-amber-600"
               iconBg="bg-amber-50"
-              onClick={() => setDrawer("unpaid")}
+              onClick={() => setDrawer((d) => d === "unpaid" ? null : "unpaid")}
               active={drawer === "unpaid"}
             />
             <MetricCard
@@ -156,7 +156,7 @@ export default function DashboardPage() {
               value={formatCurrency(metrics.monthly_revenue)}
               iconColor="text-green-600"
               iconBg="bg-green-50"
-              onClick={() => setDrawer("revenue")}
+              onClick={() => setDrawer((d) => d === "revenue" ? null : "revenue")}
               active={drawer === "revenue"}
             />
           </div>
