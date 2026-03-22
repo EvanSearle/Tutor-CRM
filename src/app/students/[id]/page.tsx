@@ -1,17 +1,16 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, useRef, use } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Copy, CheckCheck } from "lucide-react";
-import type { Student, Session, Payment } from "@/types";
-import { getStudentById } from "@/lib/queries/students";
+import { ArrowLeft, Copy, CheckCheck, ChevronDown } from "lucide-react";
+import type { Student, Session, Payment, StudentStatus } from "@/types";
+import { getStudentById, updateStudentStatus } from "@/lib/queries/students";
 import { getSessionsByStudentId, markSessionPaid, addSession } from "@/lib/queries/sessions";
 import { getPaymentsByStudentId } from "@/lib/queries/payments";
 import { updateStudent } from "@/lib/queries/students";
 import { SessionLogForm } from "@/components/sessions/SessionLogForm";
 import { SessionItem } from "@/components/sessions/SessionItem";
 import { StudentForm } from "@/components/students/StudentForm";
-import { StatusBadge } from "@/components/students/StatusBadge";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
@@ -58,6 +57,12 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
     await updateStudent(updated);
     setStudent(updated);
     setEditOpen(false);
+  }
+
+  async function handleStageChange(newStatus: StudentStatus) {
+    if (!student || student.status === newStatus) return;
+    await updateStudentStatus(student.id, newStatus);
+    setStudent({ ...student, status: newStatus });
   }
 
   function copyPaymentReminder() {
@@ -114,7 +119,7 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
         <div>
           <div className="flex items-center gap-3 mb-1">
             <h1 className="text-2xl font-semibold text-ink">{student.name}</h1>
-            <StatusBadge status={student.status} />
+            <StageDropdown status={student.status} onChange={handleStageChange} />
           </div>
           <p className="text-sm text-ink-muted">
             {student.grade && <span>{student.grade} · </span>}
@@ -279,6 +284,70 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
         onSave={handleSaveStudent}
         initial={student}
       />
+    </div>
+  );
+}
+
+// ── Stage dropdown ──────────────────────────────────────────────────────────
+
+const STAGE_OPTIONS: { value: StudentStatus; label: string; styles: string }[] = [
+  { value: "prospect", label: "Prospect", styles: "bg-status-prospect-bg text-status-prospect-text" },
+  { value: "trial",    label: "Trial",    styles: "bg-status-trial-bg text-status-trial-text"       },
+  { value: "active",   label: "Active",   styles: "bg-status-active-bg text-status-active-text"     },
+  { value: "paused",   label: "Paused",   styles: "bg-status-paused-bg text-status-paused-text"     },
+  { value: "churned",  label: "Churned",  styles: "bg-status-churned-bg text-status-churned-text"   },
+];
+
+function StageDropdown({
+  status,
+  onChange,
+}: {
+  status: StudentStatus;
+  onChange: (s: StudentStatus) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const current = STAGE_OPTIONS.find((o) => o.value === status)!;
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className={cn(
+          "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition-opacity hover:opacity-80",
+          current.styles
+        )}
+      >
+        {current.label}
+        <ChevronDown size={10} className={cn("transition-transform", open && "rotate-180")} />
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-full mt-1.5 z-50 w-36 bg-white border border-surface-border rounded-xl shadow-lg overflow-hidden py-1">
+          {STAGE_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => { onChange(opt.value); setOpen(false); }}
+              className={cn(
+                "w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left transition-colors hover:bg-surface-muted",
+                opt.value === status ? "font-medium" : "text-ink-muted"
+              )}
+            >
+              <span className={cn("w-2 h-2 rounded-full flex-shrink-0", opt.styles)} />
+              {opt.label}
+              {opt.value === status && <span className="ml-auto text-brand-teal text-xs">✓</span>}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
