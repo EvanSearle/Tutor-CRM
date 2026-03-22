@@ -9,11 +9,18 @@ import {
   useSensor,
   useSensors,
   useDroppable,
-  useDraggable,
+  closestCenter,
   type DragStartEvent,
   type DragEndEvent,
   type DragOverEvent,
 } from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import type { Student, StudentStatus, Session } from "@/types";
 import { getStudents, updateStudentStatus } from "@/lib/queries/students";
 import { MOCK_SESSIONS } from "@/lib/mock/data";
@@ -28,95 +35,7 @@ const COLUMNS: { key: StudentStatus; label: string; color: string; headerBg: str
   { key: "churned",  label: "Churned",  color: "text-red-700",    headerBg: "bg-red-50 border-red-100"     },
 ];
 
-// ── Drop placeholder ─────────────────────────────────────────────────────────
-function DropPlaceholder({ student }: { student: Student }) {
-  return (
-    <div className="border-2 border-dashed border-brand-teal/40 rounded-lg p-3 bg-brand-teal/5 pointer-events-none">
-      <p className="text-xs font-medium text-ink-faint/60">{student.name}</p>
-      <p className="text-xs text-ink-faint/40 mt-0.5">{student.grade}</p>
-    </div>
-  );
-}
-
-// ── Droppable column ────────────────────────────────────────────────────────
-function Column({
-  col,
-  students,
-  sessions,
-  activeId,
-  activeStudent,
-  isTargeted,
-}: {
-  col: typeof COLUMNS[number];
-  students: Student[];
-  sessions: Session[];
-  activeId: string | null;
-  activeStudent: Student | null;
-  isTargeted: boolean;
-}) {
-  const { setNodeRef, isOver } = useDroppable({ id: col.key });
-  const showPlaceholder = isTargeted && activeStudent != null && activeStudent.status !== col.key;
-
-  return (
-    <div className="flex-shrink-0 w-64 flex flex-col">
-      <div className={cn("flex items-center justify-between px-3 py-2.5 rounded-t-xl border border-b-0", col.headerBg)}>
-        <span className={cn("text-xs font-semibold uppercase tracking-wide", col.color)}>{col.label}</span>
-        <span className={cn("text-xs font-semibold tabular-nums", col.color)}>{students.length}</span>
-      </div>
-      <div
-        ref={setNodeRef}
-        className={cn(
-          "border border-surface-border rounded-b-xl p-2 space-y-2 min-h-[120px] transition-colors",
-          isOver ? "bg-brand-teal/5 border-brand-teal/30" : "bg-surface-muted"
-        )}
-      >
-        {students.length === 0 && !showPlaceholder && (
-          <p className="text-xs text-ink-faint text-center py-6">No students</p>
-        )}
-        {students.map((student) => (
-          <DraggableCard
-            key={student.id}
-            student={student}
-            sessions={sessions}
-            isDragging={activeId === student.id}
-          />
-        ))}
-        {showPlaceholder && <DropPlaceholder student={activeStudent} />}
-      </div>
-    </div>
-  );
-}
-
-// ── Draggable card ──────────────────────────────────────────────────────────
-function DraggableCard({
-  student,
-  sessions,
-  isDragging,
-}: {
-  student: Student;
-  sessions: Session[];
-  isDragging: boolean;
-}) {
-  const { attributes, listeners, setNodeRef, transform } = useDraggable({ id: student.id });
-
-  const style = transform
-    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
-    : undefined;
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...listeners}
-      {...attributes}
-      className={cn(isDragging && "opacity-30")}
-    >
-      <StudentCard student={student} sessions={sessions} />
-    </div>
-  );
-}
-
-// ── Card content (shared between draggable + overlay) ───────────────────────
+// ── Card content (shared between sortable card + overlay) ───────────────────
 function StudentCard({ student, sessions }: { student: Student; sessions: Session[] }) {
   const last = sessions
     .filter((s) => s.student_id === student.id)
@@ -157,13 +76,88 @@ function StudentCard({ student, sessions }: { student: Student; sessions: Sessio
   );
 }
 
-// ── Page ────────────────────────────────────────────────────────────────────
+// ── Sortable card ────────────────────────────────────────────────────────────
+function SortableCard({ student, sessions }: { student: Student; sessions: Session[] }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: student.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  if (isDragging) {
+    return (
+      <div ref={setNodeRef} style={style} className="relative pointer-events-none">
+        {/* invisible preserves exact card height in layout */}
+        <div className="invisible">
+          <StudentCard student={student} sessions={sessions} />
+        </div>
+        {/* dashed outline sits on top at the same size */}
+        <div className="absolute inset-0 border-2 border-dashed border-brand-teal/50 rounded-lg bg-brand-teal/5" />
+      </div>
+    );
+  }
+
+  return (
+    <div ref={setNodeRef} style={style} {...listeners} {...attributes}>
+      <StudentCard student={student} sessions={sessions} />
+    </div>
+  );
+}
+
+// ── Droppable column ─────────────────────────────────────────────────────────
+function Column({
+  col,
+  students,
+  sessions,
+}: {
+  col: typeof COLUMNS[number];
+  students: Student[];
+  sessions: Session[];
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: col.key });
+  const studentIds = students.map((s) => s.id);
+
+  return (
+    <div className="flex-shrink-0 w-64 flex flex-col">
+      <div className={cn("flex items-center justify-between px-3 py-2.5 rounded-t-xl border border-b-0", col.headerBg)}>
+        <span className={cn("text-xs font-semibold uppercase tracking-wide", col.color)}>{col.label}</span>
+        <span className={cn("text-xs font-semibold tabular-nums", col.color)}>{students.length}</span>
+      </div>
+      <div
+        ref={setNodeRef}
+        className={cn(
+          "border border-surface-border rounded-b-xl p-2 space-y-2 min-h-[120px] transition-colors",
+          isOver ? "bg-brand-teal/5 border-brand-teal/30" : "bg-surface-muted"
+        )}
+      >
+        <SortableContext items={studentIds} strategy={verticalListSortingStrategy}>
+          {students.length === 0 && (
+            <p className="text-xs text-ink-faint text-center py-6">No students</p>
+          )}
+          {students.map((student) => (
+            <SortableCard key={student.id} student={student} sessions={sessions} />
+          ))}
+        </SortableContext>
+      </div>
+    </div>
+  );
+}
+
+// ── Page ─────────────────────────────────────────────────────────────────────
 export default function PipelinePage() {
   const [students, setStudents] = useState<Student[]>([]);
+  const [studentsSnapshot, setStudentsSnapshot] = useState<Student[]>([]);
   const [sessions] = useState<Session[]>(MOCK_SESSIONS);
   const [loading, setLoading] = useState(true);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [overColumnId, setOverColumnId] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
@@ -178,27 +172,58 @@ export default function PipelinePage() {
 
   function handleDragStart(event: DragStartEvent) {
     setActiveId(String(event.active.id));
+    setStudentsSnapshot([...students]);
   }
 
   function handleDragOver(event: DragOverEvent) {
-    setOverColumnId(event.over ? String(event.over.id) : null);
+    const { active, over } = event;
+    if (!over) return;
+
+    const activeId = String(active.id);
+    const overId = String(over.id);
+    const activeStudent = students.find((s) => s.id === activeId);
+    if (!activeStudent) return;
+
+    const overIsColumn = COLUMNS.some((c) => c.key === overId);
+    const overColumnKey: StudentStatus = overIsColumn
+      ? (overId as StudentStatus)
+      : (students.find((s) => s.id === overId)?.status ?? activeStudent.status);
+
+    setStudents((prev) => {
+      const activeIndex = prev.findIndex((s) => s.id === activeId);
+
+      if (overIsColumn) {
+        // Hovering over an empty column — just change status
+        if (activeStudent.status === overColumnKey) return prev;
+        return prev.map((s) => s.id === activeId ? { ...s, status: overColumnKey } : s);
+      }
+
+      const overIndex = prev.findIndex((s) => s.id === overId);
+      if (overIndex === -1) return prev;
+
+      if (activeStudent.status === overColumnKey) {
+        // Same column — reorder
+        return arrayMove(prev, activeIndex, overIndex);
+      }
+
+      // Cross-column — change status then move to insertion point
+      const updated = prev.map((s) => s.id === activeId ? { ...s, status: overColumnKey } : s);
+      const newActiveIndex = updated.findIndex((s) => s.id === activeId);
+      const newOverIndex = updated.findIndex((s) => s.id === overId);
+      return arrayMove(updated, newActiveIndex, newOverIndex);
+    });
   }
 
   async function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
+    const studentId = String(event.active.id);
     setActiveId(null);
-    setOverColumnId(null);
-    if (!over) return;
+    const finalStudent = students.find((s) => s.id === studentId);
+    if (finalStudent) await updateStudentStatus(studentId, finalStudent.status);
+  }
 
-    const studentId = String(active.id);
-    const newStatus = String(over.id) as StudentStatus;
-    const student = students.find((s) => s.id === studentId);
-    if (!student || student.status === newStatus) return;
-
-    setStudents((prev) =>
-      prev.map((s) => (s.id === studentId ? { ...s, status: newStatus } : s))
-    );
-    await updateStudentStatus(studentId, newStatus);
+  function handleDragCancel() {
+    setStudents(studentsSnapshot);
+    setActiveId(null);
   }
 
   const activeStudent = students.find((s) => s.id === activeId) ?? null;
@@ -221,11 +246,18 @@ export default function PipelinePage() {
       <div className="mb-6">
         <h1 className="text-2xl font-semibold text-ink">Pipeline</h1>
         <p className="text-sm text-ink-muted mt-0.5">
-          {students.length} student{students.length !== 1 ? "s" : ""} · drag cards between stages
+          {students.length} student{students.length !== 1 ? "s" : ""} · drag cards between stages or reorder within a stage
         </p>
       </div>
 
-      <DndContext sensors={sensors} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
+      >
         <div className="flex gap-4 overflow-x-auto pb-4 flex-1 items-start">
           {COLUMNS.map((col) => (
             <Column
@@ -233,9 +265,6 @@ export default function PipelinePage() {
               col={col}
               students={students.filter((s) => s.status === col.key)}
               sessions={sessions}
-              activeId={activeId}
-              activeStudent={activeStudent}
-              isTargeted={overColumnId === col.key}
             />
           ))}
         </div>
