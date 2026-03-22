@@ -12,6 +12,7 @@ import {
   useDraggable,
   type DragStartEvent,
   type DragEndEvent,
+  type DragOverEvent,
 } from "@dnd-kit/core";
 import type { Student, StudentStatus, Session } from "@/types";
 import { getStudents, updateStudentStatus } from "@/lib/queries/students";
@@ -27,19 +28,34 @@ const COLUMNS: { key: StudentStatus; label: string; color: string; headerBg: str
   { key: "churned",  label: "Churned",  color: "text-red-700",    headerBg: "bg-red-50 border-red-100"     },
 ];
 
+// ── Drop placeholder ─────────────────────────────────────────────────────────
+function DropPlaceholder({ student }: { student: Student }) {
+  return (
+    <div className="border-2 border-dashed border-brand-teal/40 rounded-lg p-3 bg-brand-teal/5 pointer-events-none">
+      <p className="text-xs font-medium text-ink-faint/60">{student.name}</p>
+      <p className="text-xs text-ink-faint/40 mt-0.5">{student.grade}</p>
+    </div>
+  );
+}
+
 // ── Droppable column ────────────────────────────────────────────────────────
 function Column({
   col,
   students,
   sessions,
   activeId,
+  activeStudent,
+  isTargeted,
 }: {
   col: typeof COLUMNS[number];
   students: Student[];
   sessions: Session[];
   activeId: string | null;
+  activeStudent: Student | null;
+  isTargeted: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: col.key });
+  const showPlaceholder = isTargeted && activeStudent != null && activeStudent.status !== col.key;
 
   return (
     <div className="flex-shrink-0 w-64 flex flex-col">
@@ -54,7 +70,7 @@ function Column({
           isOver ? "bg-brand-teal/5 border-brand-teal/30" : "bg-surface-muted"
         )}
       >
-        {students.length === 0 && !isOver && (
+        {students.length === 0 && !showPlaceholder && (
           <p className="text-xs text-ink-faint text-center py-6">No students</p>
         )}
         {students.map((student) => (
@@ -65,6 +81,7 @@ function Column({
             isDragging={activeId === student.id}
           />
         ))}
+        {showPlaceholder && <DropPlaceholder student={activeStudent} />}
       </div>
     </div>
   );
@@ -146,6 +163,7 @@ export default function PipelinePage() {
   const [sessions] = useState<Session[]>(MOCK_SESSIONS);
   const [loading, setLoading] = useState(true);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [overColumnId, setOverColumnId] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
@@ -162,9 +180,14 @@ export default function PipelinePage() {
     setActiveId(String(event.active.id));
   }
 
+  function handleDragOver(event: DragOverEvent) {
+    setOverColumnId(event.over ? String(event.over.id) : null);
+  }
+
   async function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     setActiveId(null);
+    setOverColumnId(null);
     if (!over) return;
 
     const studentId = String(active.id);
@@ -202,7 +225,7 @@ export default function PipelinePage() {
         </p>
       </div>
 
-      <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <DndContext sensors={sensors} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
         <div className="flex gap-4 overflow-x-auto pb-4 flex-1 items-start">
           {COLUMNS.map((col) => (
             <Column
@@ -211,6 +234,8 @@ export default function PipelinePage() {
               students={students.filter((s) => s.status === col.key)}
               sessions={sessions}
               activeId={activeId}
+              activeStudent={activeStudent}
+              isTargeted={overColumnId === col.key}
             />
           ))}
         </div>
