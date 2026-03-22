@@ -22,6 +22,18 @@
     color: #1c1917;
   }
 
+  button,
+  a,
+  [role="button"],
+  select,
+  label[for] {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
   /* Scrollbar styling */
   ::-webkit-scrollbar {
     width: 6px;
