@@ -5,8 +5,9 @@ import Link from "next/link";
 import { Users, CalendarCheck, AlertCircle, TrendingUp, X, Copy, CheckCheck, ChevronRight } from "lucide-react";
 import type { Student, Session, DashboardMetrics, Payment } from "@/types";
 import { getStudents } from "@/lib/queries/students";
-import { getDashboardMetrics } from "@/lib/mock";
-import { MOCK_SESSIONS, MOCK_PAYMENTS } from "@/lib/mock/data";
+import { getDashboardMetrics } from "@/lib/queries/dashboard";
+import { getAllSessions } from "@/lib/queries/sessions";
+import { getAllPayments } from "@/lib/queries/payments";
 import { formatCurrency, daysSince, formatDate, formatDuration } from "@/lib/utils";
 import { StatusBadge } from "@/components/students/StatusBadge";
 import { cn } from "@/lib/utils";
@@ -17,16 +18,18 @@ type DrawerKey = "active" | "sessions" | "unpaid" | "revenue" | null;
 export default function DashboardPage() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
-  const [sessions] = useState<Session[]>(MOCK_SESSIONS);
-  const [payments] = useState<Payment[]>(MOCK_PAYMENTS);
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [drawer, setDrawer] = useState<DrawerKey>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([getDashboardMetrics(), getStudents()]).then(([m, s]) => {
+    Promise.all([getDashboardMetrics(), getStudents(), getAllSessions(), getAllPayments()]).then(([m, s, sess, pays]) => {
       setMetrics(m);
       setStudents(s);
+      setSessions(sess);
+      setPayments(pays);
       setLoading(false);
     }).catch(console.error);
   }, []);
