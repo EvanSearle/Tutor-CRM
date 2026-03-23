@@ -8,6 +8,8 @@ interface SessionLogFormProps {
   studentId: string;
   hourlyRate: number;
   onSave: (session: Session) => void;
+  initialSession?: Session;
+  onCancel?: () => void;
 }
 
 const MOODS: { value: Mood; label: string; color: string }[] = [
@@ -16,12 +18,13 @@ const MOODS: { value: Mood; label: string; color: string }[] = [
   { value: "tough", label: "Tough", color: "bg-red-50 text-red-700 border-red-200 data-[active=true]:bg-red-500 data-[active=true]:text-white data-[active=true]:border-red-500" },
 ];
 
-export function SessionLogForm({ studentId, hourlyRate, onSave }: SessionLogFormProps) {
-  const [date, setDate] = useState("2026-03-20");
-  const [duration, setDuration] = useState("");
-  const [notes, setNotes] = useState("");
-  const [mood, setMood] = useState<Mood>("good");
-  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("unpaid");
+export function SessionLogForm({ studentId, hourlyRate, onSave, initialSession, onCancel }: SessionLogFormProps) {
+  const isEdit = !!initialSession;
+  const [date, setDate] = useState(initialSession?.date ?? "2026-03-20");
+  const [duration, setDuration] = useState(initialSession ? String(initialSession.duration_minutes) : "");
+  const [notes, setNotes] = useState(initialSession?.notes ?? "");
+  const [mood, setMood] = useState<Mood>(initialSession?.mood ?? "good");
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(initialSession?.payment_status ?? "unpaid");
   const [saving, setSaving] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -31,28 +34,40 @@ export function SessionLogForm({ studentId, hourlyRate, onSave }: SessionLogForm
     const durationMins = parseInt(duration) || 60;
     const amountDue = (durationMins / 60) * hourlyRate;
 
-    const session: Session = {
-      id: generateId(),
-      student_id: studentId,
-      tutor_id: "t1",
-      date,
-      duration_minutes: durationMins,
-      notes: notes.trim(),
-      mood,
-      payment_status: paymentStatus,
-      amount_due: Math.round(amountDue * 100) / 100,
-      created_at: new Date().toISOString(),
-    };
+    const session: Session = isEdit
+      ? {
+          ...initialSession,
+          date,
+          duration_minutes: durationMins,
+          notes: notes.trim(),
+          mood,
+          payment_status: paymentStatus,
+          amount_due: Math.round(amountDue * 100) / 100,
+        }
+      : {
+          id: generateId(),
+          student_id: studentId,
+          tutor_id: "t1",
+          date,
+          duration_minutes: durationMins,
+          notes: notes.trim(),
+          mood,
+          payment_status: paymentStatus,
+          amount_due: Math.round(amountDue * 100) / 100,
+          created_at: new Date().toISOString(),
+        };
 
     // Simulate save
     await new Promise((r) => setTimeout(r, 80));
     onSave(session);
 
-    // Reset
-    setDuration("");
-    setNotes("");
-    setMood("good");
-    setPaymentStatus("unpaid");
+    if (!isEdit) {
+      // Reset only for create mode
+      setDuration("");
+      setNotes("");
+      setMood("good");
+      setPaymentStatus("unpaid");
+    }
     setSaving(false);
   }
 
@@ -61,7 +76,7 @@ export function SessionLogForm({ studentId, hourlyRate, onSave }: SessionLogForm
       onSubmit={handleSubmit}
       className="bg-white border border-surface-border rounded-xl p-4 space-y-4"
     >
-      <p className="text-sm font-medium text-ink">Log a session</p>
+      <p className="text-sm font-medium text-ink">{isEdit ? "Edit session" : "Log a session"}</p>
 
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
@@ -131,13 +146,24 @@ export function SessionLogForm({ studentId, hourlyRate, onSave }: SessionLogForm
           </select>
         </div>
 
-        <button
-          type="submit"
-          disabled={saving}
-          className="mt-auto ml-auto px-4 py-1.5 bg-brand-teal text-white text-sm font-medium rounded-lg hover:bg-brand-teal-dark transition-colors disabled:opacity-60"
-        >
-          {saving ? "Saving…" : "Save session"}
-        </button>
+        <div className="mt-auto ml-auto flex items-center gap-2">
+          {isEdit && onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-4 py-1.5 text-sm font-medium border border-surface-border rounded-lg text-ink-muted hover:text-ink hover:bg-surface-muted transition-colors"
+            >
+              Cancel
+            </button>
+          )}
+          <button
+            type="submit"
+            disabled={saving}
+            className="px-4 py-1.5 bg-brand-teal text-white text-sm font-medium rounded-lg hover:bg-brand-teal-dark transition-colors disabled:opacity-60"
+          >
+            {saving ? "Saving…" : "Save session"}
+          </button>
+        </div>
       </div>
     </form>
   );

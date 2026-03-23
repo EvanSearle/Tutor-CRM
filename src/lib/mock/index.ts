@@ -94,6 +94,11 @@ export async function markSessionPaid(sessionId: string): Promise<void> {
   return delay(undefined);
 }
 
+export async function editSession(updated: Session): Promise<void> {
+  sessions = sessions.map((s) => (s.id === updated.id ? updated : s));
+  return delay(undefined);
+}
+
 export async function getPaymentsByStudentId(studentId: string) {
   const result = MOCK_PAYMENTS.filter((p) => p.student_id === studentId);
   return delay(result);

@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useRef, use } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Copy, CheckCheck, ChevronDown } from "lucide-react";
+import * as Dialog from "@radix-ui/react-dialog";
+import { ArrowLeft, Copy, CheckCheck, ChevronDown, X } from "lucide-react";
 import type { Student, Session, Payment, StudentStatus } from "@/types";
 import { getStudentById, updateStudentStatus } from "@/lib/queries/students";
-import { getSessionsByStudentId, markSessionPaid, addSession } from "@/lib/queries/sessions";
+import { getSessionsByStudentId, markSessionPaid, addSession, editSession } from "@/lib/queries/sessions";
 import { getPaymentsByStudentId } from "@/lib/queries/payments";
 import { updateStudent } from "@/lib/queries/students";
 import { SessionLogForm } from "@/components/sessions/SessionLogForm";
@@ -26,6 +27,7 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>("sessions");
   const [editOpen, setEditOpen] = useState(false);
+  const [editingSession, setEditingSession] = useState<Session | null>(null);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -51,6 +53,12 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
     setSessions((prev) =>
       prev.map((s) => (s.id === sessionId ? { ...s, payment_status: "paid" as const } : s))
     );
+  }
+
+  function handleSaveEdit(updated: Session) {
+    editSession(updated);
+    setSessions((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+    setEditingSession(null);
   }
 
   async function handleSaveStudent(updated: Student) {
@@ -174,6 +182,7 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
                   session={session}
                   currency={student.currency}
                   onMarkPaid={handleMarkPaid}
+                  onEdit={setEditingSession}
                 />
               ))
             )}
@@ -284,6 +293,33 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
         onSave={handleSaveStudent}
         initial={student}
       />
+
+      {/* Edit session modal */}
+      <Dialog.Root open={!!editingSession} onOpenChange={(v) => !v && setEditingSession(null)}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 bg-black/30 z-50 backdrop-blur-[2px]" />
+          <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-lg max-h-[90vh] overflow-y-auto bg-white rounded-xl shadow-xl border border-surface-border p-6 focus:outline-none">
+            <div className="flex items-center justify-between mb-5">
+              <Dialog.Title className="text-lg font-semibold text-ink">Edit Session</Dialog.Title>
+              <button
+                onClick={() => setEditingSession(null)}
+                className="text-ink-faint hover:text-ink transition-colors rounded-md p-1"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            {editingSession && (
+              <SessionLogForm
+                studentId={student.id}
+                hourlyRate={student.hourly_rate}
+                initialSession={editingSession}
+                onSave={handleSaveEdit}
+                onCancel={() => setEditingSession(null)}
+              />
+            )}
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </div>
   );
 }

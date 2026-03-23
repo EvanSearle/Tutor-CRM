@@ -25,9 +25,10 @@ interface SessionItemProps {
   session: Session;
   currency: string;
   onMarkPaid?: (id: string) => void;
+  onEdit?: (session: Session) => void;
 }
 
-export function SessionItem({ session, currency, onMarkPaid }: SessionItemProps) {
+export function SessionItem({ session, currency, onMarkPaid, onEdit }: SessionItemProps) {
   return (
     <div className="flex gap-3 py-3.5 border-b border-surface-border last:border-0">
       {/* Mood dot */}
@@ -55,13 +56,25 @@ export function SessionItem({ session, currency, onMarkPaid }: SessionItemProps)
           <p className="text-sm text-ink-muted mt-1.5 leading-relaxed line-clamp-2">{session.notes}</p>
         )}
 
-        {session.payment_status !== "paid" && onMarkPaid && (
-          <button
-            onClick={() => onMarkPaid(session.id)}
-            className="mt-2 text-xs text-brand-teal hover:underline font-medium"
-          >
-            Mark as paid
-          </button>
+        {(onEdit || (session.payment_status !== "paid" && onMarkPaid)) && (
+          <div className="flex items-center gap-3 mt-2">
+            {session.payment_status !== "paid" && onMarkPaid && (
+              <button
+                onClick={() => onMarkPaid(session.id)}
+                className="text-xs text-brand-teal hover:underline font-medium"
+              >
+                Mark as paid
+              </button>
+            )}
+            {onEdit && (
+              <button
+                onClick={() => onEdit(session)}
+                className="text-xs text-ink-muted hover:underline font-medium"
+              >
+                Edit
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>
