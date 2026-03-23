@@ -4,8 +4,8 @@ import { useState, useEffect, useRef, use } from "react";
 import { useRouter } from "next/navigation";
 import * as Dialog from "@radix-ui/react-dialog";
 import { ArrowLeft, Copy, CheckCheck, ChevronDown, X } from "lucide-react";
-import type { Student, Session, Payment, StudentStatus } from "@/types";
-import { getStudentById, updateStudentStatus } from "@/lib/queries/students";
+import type { Student, Session, Payment, StudentStatus, PauseEvent } from "@/types";
+import { getStudentById, updateStudentStatus, pauseStudent, unpauseStudent, getPauseEventsByStudentId } from "@/lib/queries/students";
 import { getSessionsByStudentId, markSessionPaid, addSession, editSession } from "@/lib/queries/sessions";
 import { getPaymentsByStudentId } from "@/lib/queries/payments";
 import { updateStudent } from "@/lib/queries/students";
@@ -29,16 +29,23 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
   const [editOpen, setEditOpen] = useState(false);
   const [editingSession, setEditingSession] = useState<Session | null>(null);
   const [copied, setCopied] = useState(false);
+  const [pauseModalOpen, setPauseModalOpen] = useState(false);
+  const [pauseReason, setPauseReason] = useState("");
+  const [pauseEvents, setPauseEvents] = useState<PauseEvent[]>([]);
+  const [pauseReasonPopupOpen, setPauseReasonPopupOpen] = useState(false);
+  const pauseMarkerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     Promise.all([
       getStudentById(id),
       getSessionsByStudentId(id),
       getPaymentsByStudentId(id),
-    ]).then(([s, sess, pays]) => {
+      getPauseEventsByStudentId(id),
+    ]).then(([s, sess, pays, pevents]) => {
       setStudent(s);
       setSessions(sess);
       setPayments(pays);
+      setPauseEvents(pevents);
       setLoading(false);
     });
   }, [id]);
@@ -72,6 +79,49 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
     await updateStudentStatus(student.id, newStatus);
     setStudent({ ...student, status: newStatus });
   }
+
+  async function handleSubmitPause() {
+    if (!student) return;
+    await pauseStudent(student.id, pauseReason.trim());
+    const newEvent: PauseEvent = {
+      id: `pe${Date.now()}`,
+      student_id: student.id,
+      tutor_id: student.tutor_id,
+      action: "paused",
+      reason: pauseReason.trim(),
+      timestamp: new Date().toISOString(),
+    };
+    setStudent({ ...student, status: "paused", pause_reason: pauseReason.trim() });
+    setPauseEvents((prev) => [newEvent, ...prev]);
+    setPauseModalOpen(false);
+    setPauseReason("");
+  }
+
+  async function handleUnpause() {
+    if (!student) return;
+    await unpauseStudent(student.id);
+    const newEvent: PauseEvent = {
+      id: `pe${Date.now()}`,
+      student_id: student.id,
+      tutor_id: student.tutor_id,
+      action: "unpaused",
+      reason: "",
+      timestamp: new Date().toISOString(),
+    };
+    setStudent({ ...student, status: "active", pause_reason: "" });
+    setPauseEvents((prev) => [newEvent, ...prev]);
+    setPauseReasonPopupOpen(false);
+  }
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (pauseMarkerRef.current && !pauseMarkerRef.current.contains(e.target as Node)) {
+        setPauseReasonPopupOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   function copyPaymentReminder() {
     if (!student) return;
@@ -128,18 +178,53 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
           <div className="flex items-center gap-3 mb-1">
             <h1 className="text-2xl font-semibold text-ink">{student.name}</h1>
             <StageDropdown status={student.status} onChange={handleStageChange} />
+            {student.status === "paused" && (
+              <div ref={pauseMarkerRef} className="relative">
+                <button
+                  onClick={() => setPauseReasonPopupOpen((o) => !o)}
+                  className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full hover:bg-amber-100 transition-colors"
+                >
+                  ⏸ Paused
+                </button>
+                {pauseReasonPopupOpen && (
+                  <div className="absolute left-0 top-full mt-1.5 z-50 w-64 bg-white border border-surface-border rounded-xl shadow-lg p-3">
+                    <p className="text-xs font-medium text-ink-faint uppercase tracking-wide mb-1.5">Pause reason</p>
+                    <p className="text-sm text-ink-muted leading-relaxed">
+                      {student.pause_reason || "No reason given"}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <p className="text-sm text-ink-muted">
             {student.grade && <span>{student.grade} · </span>}
             {student.subjects.join(", ")}
           </p>
         </div>
-        <button
-          onClick={() => setEditOpen(true)}
-          className="px-3 py-1.5 text-sm font-medium border border-surface-border rounded-lg text-ink-muted hover:text-ink hover:bg-surface-muted transition-colors"
-        >
-          Edit
-        </button>
+        <div className="flex items-center gap-2">
+          {student.status === "paused" ? (
+            <button
+              onClick={handleUnpause}
+              className="px-3 py-1.5 text-sm font-medium border border-teal-300 bg-teal-50 rounded-lg text-teal-700 hover:bg-teal-100 transition-colors"
+            >
+              Unpause
+            </button>
+          ) : (
+            <button
+              onClick={() => setPauseModalOpen(true)}
+              className="px-3 py-1.5 text-sm font-medium border border-surface-border rounded-lg text-ink-muted hover:text-ink hover:bg-surface-muted transition-colors"
+            >
+              Pause
+            </button>
+          )}
+          <button
+            onClick={() => setEditOpen(true)}
+            className="px-3 py-1.5 text-sm font-medium border border-surface-border rounded-lg text-ink-muted hover:text-ink hover:bg-surface-muted transition-colors"
+          >
+            Edit
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -237,6 +322,34 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
               </Section>
             </>
           )}
+
+          <hr className="border-surface-border" />
+          <Section title="Pause history">
+            {pauseEvents.length === 0 ? (
+              <p className="text-sm text-ink-muted">No pause history.</p>
+            ) : (
+              <div className="space-y-2">
+                {pauseEvents.map((event) => (
+                  <div key={event.id} className="flex items-start gap-2.5 text-sm">
+                    <span className={cn(
+                      "mt-0.5 text-xs font-medium px-1.5 py-0.5 rounded flex-shrink-0",
+                      event.action === "paused"
+                        ? "bg-amber-50 text-amber-700 border border-amber-200"
+                        : "bg-teal-50 text-teal-700 border border-teal-200"
+                    )}>
+                      {event.action === "paused" ? "⏸ Paused" : "▶ Unpaused"}
+                    </span>
+                    <div>
+                      <span className="text-ink-faint text-xs">{formatDate(event.timestamp)}</span>
+                      {event.reason && (
+                        <p className="text-ink-muted text-xs mt-0.5">{event.reason}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Section>
         </div>
       )}
 
@@ -294,6 +407,45 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
         initial={student}
       />
 
+      {/* Pause modal */}
+      <Dialog.Root open={pauseModalOpen} onOpenChange={(v) => { if (!v) { setPauseModalOpen(false); setPauseReason(""); } }}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 bg-black/30 z-50 backdrop-blur-[2px]" />
+          <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md bg-white rounded-xl shadow-xl border border-surface-border p-6 focus:outline-none">
+            <div className="flex items-center justify-between mb-4">
+              <Dialog.Title className="text-lg font-semibold text-ink">Pause student</Dialog.Title>
+              <button
+                onClick={() => { setPauseModalOpen(false); setPauseReason(""); }}
+                className="text-ink-faint hover:text-ink transition-colors rounded-md p-1"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <textarea
+              value={pauseReason}
+              onChange={(e) => setPauseReason(e.target.value)}
+              placeholder="Reason for pausing (optional)"
+              rows={3}
+              className="w-full border border-surface-border rounded-lg px-3 py-2 text-sm text-ink placeholder:text-ink-faint resize-none focus:outline-none focus:ring-2 focus:ring-brand-teal/30 focus:border-brand-teal"
+            />
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                onClick={() => { setPauseModalOpen(false); setPauseReason(""); }}
+                className="px-3 py-1.5 text-sm font-medium border border-surface-border rounded-lg text-ink-muted hover:text-ink hover:bg-surface-muted transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmitPause}
+                className="px-3 py-1.5 text-sm font-medium bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+              >
+                Pause student
+              </button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
       {/* Edit session modal */}
       <Dialog.Root open={!!editingSession} onOpenChange={(v) => !v && setEditingSession(null)}>
         <Dialog.Portal>
@@ -330,9 +482,10 @@ const STAGE_OPTIONS: { value: StudentStatus; label: string; styles: string }[] =
   { value: "prospect", label: "Prospect", styles: "bg-status-prospect-bg text-status-prospect-text" },
   { value: "trial",    label: "Trial",    styles: "bg-status-trial-bg text-status-trial-text"       },
   { value: "active",   label: "Active",   styles: "bg-status-active-bg text-status-active-text"     },
-  { value: "paused",   label: "Paused",   styles: "bg-status-paused-bg text-status-paused-text"     },
   { value: "churned",  label: "Churned",  styles: "bg-status-churned-bg text-status-churned-text"   },
 ];
+
+const ACTIVE_OPTION = STAGE_OPTIONS.find((o) => o.value === "active")!;
 
 function StageDropdown({
   status,
@@ -343,7 +496,9 @@ function StageDropdown({
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const current = STAGE_OPTIONS.find((o) => o.value === status)!;
+  // Paused students display as "Active" in the dropdown
+  const displayStatus = status === "paused" ? "active" : status;
+  const current = STAGE_OPTIONS.find((o) => o.value === displayStatus) ?? ACTIVE_OPTION;
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -374,12 +529,12 @@ function StageDropdown({
               onClick={() => { onChange(opt.value); setOpen(false); }}
               className={cn(
                 "w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left transition-colors hover:bg-surface-muted",
-                opt.value === status ? "font-medium" : "text-ink-muted"
+                opt.value === displayStatus ? "font-medium" : "text-ink-muted"
               )}
             >
               <span className={cn("w-2 h-2 rounded-full flex-shrink-0", opt.styles)} />
               {opt.label}
-              {opt.value === status && <span className="ml-auto text-brand-teal text-xs">✓</span>}
+              {opt.value === displayStatus && <span className="ml-auto text-brand-teal text-xs">✓</span>}
             </button>
           ))}
         </div>
