@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import type { Student, StudentStatus } from "@/types";
-import { generateId } from "@/lib/utils";
-import { cn } from "@/lib/utils";
+import { generateId, cn } from "@/lib/utils";
+import { inputCls } from "@/lib/styles";
 
-const STATUSES: StudentStatus[] = ["prospect", "trial", "active", "paused", "churned"];
+const STATUSES: StudentStatus[] = ["prospect", "trial", "active", "churned"];
 
 interface StudentFormProps {
   open: boolean;
@@ -54,6 +54,29 @@ export function StudentForm({ open, onClose, onSave, initial }: StudentFormProps
       : EMPTY_FORM
   );
 
+  useEffect(() => {
+    setForm(
+      initial
+        ? {
+            ...EMPTY_FORM,
+            name: initial.name,
+            grade: initial.grade,
+            subjects: initial.subjects.join(", "),
+            student_email: initial.student_email,
+            parent_name: initial.parent_name,
+            parent_email: initial.parent_email,
+            parent_phone: initial.parent_phone,
+            hourly_rate: String(initial.hourly_rate),
+            currency: initial.currency,
+            status: initial.status,
+            source: initial.source,
+            notes: initial.notes,
+            tags: initial.tags.join(", "),
+          }
+        : EMPTY_FORM
+    );
+  }, [initial?.id]);
+
   function field(key: keyof typeof EMPTY_FORM) {
     return {
       value: form[key],
@@ -99,6 +122,7 @@ export function StudentForm({ open, onClose, onSave, initial }: StudentFormProps
             </Dialog.Title>
             <button
               onClick={onClose}
+              aria-label="Close"
               className="text-ink-faint hover:text-ink transition-colors rounded-md p-1"
             >
               <X size={18} />
@@ -218,5 +242,3 @@ function FormField({ label, children }: { label: string; children: React.ReactNo
   );
 }
 
-const inputCls =
-  "w-full px-3 py-2 text-sm border border-surface-border rounded-lg bg-white text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-brand-teal/30 focus:border-brand-teal transition-colors";

@@ -1,15 +1,17 @@
-import type { Student, Session, Reminder, DashboardMetrics, StudentStatus } from "@/types";
+import type { Student, Session, Reminder, DashboardMetrics, StudentStatus, PauseEvent, Payment } from "@/types";
 import {
   MOCK_STUDENTS,
   MOCK_SESSIONS,
   MOCK_REMINDERS,
   MOCK_PAYMENTS,
+  MOCK_PAUSE_EVENTS,
 } from "./data";
 
 // Internal mutable state for mock layer
 let students = [...MOCK_STUDENTS];
 let sessions = [...MOCK_SESSIONS];
 let reminders = [...MOCK_REMINDERS];
+let pauseEvents = [...MOCK_PAUSE_EVENTS];
 
 function delay<T>(value: T): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(value), 80));
@@ -35,7 +37,8 @@ export async function getReminders(): Promise<Reminder[]> {
 }
 
 export async function getDashboardMetrics(): Promise<DashboardMetrics> {
-  const today = new Date("2026-03-20");
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
   const weekAgo = new Date(today);
   weekAgo.setDate(weekAgo.getDate() - 7);
 
@@ -99,8 +102,47 @@ export async function editSession(updated: Session): Promise<void> {
   return delay(undefined);
 }
 
-export async function getPaymentsByStudentId(studentId: string) {
+export async function getPaymentsByStudentId(studentId: string): Promise<Payment[]> {
   const result = MOCK_PAYMENTS.filter((p) => p.student_id === studentId);
+  return delay(result);
+}
+
+export async function pauseStudent(studentId: string, reason: string): Promise<void> {
+  students = students.map((s) =>
+    s.id === studentId ? { ...s, status: "paused" as const, pause_reason: reason, updated_at: new Date().toISOString() } : s
+  );
+  const event: PauseEvent = {
+    id: `pe${Date.now()}`,
+    student_id: studentId,
+    tutor_id: "t1",
+    action: "paused",
+    reason,
+    timestamp: new Date().toISOString(),
+  };
+  pauseEvents = [event, ...pauseEvents];
+  return delay(undefined);
+}
+
+export async function unpauseStudent(studentId: string): Promise<void> {
+  students = students.map((s) =>
+    s.id === studentId ? { ...s, status: "active" as const, pause_reason: "", updated_at: new Date().toISOString() } : s
+  );
+  const event: PauseEvent = {
+    id: `pe${Date.now()}`,
+    student_id: studentId,
+    tutor_id: "t1",
+    action: "unpaused",
+    reason: "",
+    timestamp: new Date().toISOString(),
+  };
+  pauseEvents = [event, ...pauseEvents];
+  return delay(undefined);
+}
+
+export async function getPauseEventsByStudentId(studentId: string): Promise<PauseEvent[]> {
+  const result = pauseEvents
+    .filter((e) => e.student_id === studentId)
+    .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
   return delay(result);
 }
 

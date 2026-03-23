@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Session, Mood, PaymentStatus } from "@/types";
 import { generateId, cn } from "@/lib/utils";
+import { inputCls } from "@/lib/styles";
 
 interface SessionLogFormProps {
   studentId: string;
@@ -20,7 +21,7 @@ const MOODS: { value: Mood; label: string; color: string }[] = [
 
 export function SessionLogForm({ studentId, hourlyRate, onSave, initialSession, onCancel }: SessionLogFormProps) {
   const isEdit = !!initialSession;
-  const [date, setDate] = useState(initialSession?.date ?? "2026-03-20");
+  const [date, setDate] = useState(initialSession?.date ?? new Date().toISOString().split("T")[0]);
   const [duration, setDuration] = useState(initialSession ? String(initialSession.duration_minutes) : "");
   const [notes, setNotes] = useState(initialSession?.notes ?? "");
   const [mood, setMood] = useState<Mood>(initialSession?.mood ?? "good");
@@ -57,8 +58,6 @@ export function SessionLogForm({ studentId, hourlyRate, onSave, initialSession, 
           created_at: new Date().toISOString(),
         };
 
-    // Simulate save
-    await new Promise((r) => setTimeout(r, 80));
     onSave(session);
 
     if (!isEdit) {
@@ -169,5 +168,3 @@ export function SessionLogForm({ studentId, hourlyRate, onSave, initialSession, 
   );
 }
 
-const inputCls =
-  "w-full px-3 py-2 text-sm border border-surface-border rounded-lg bg-white text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-brand-teal/30 focus:border-brand-teal transition-colors";

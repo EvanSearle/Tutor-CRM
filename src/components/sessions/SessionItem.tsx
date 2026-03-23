@@ -1,13 +1,8 @@
 "use client";
 
-import type { Session, Mood } from "@/types";
+import type { Session } from "@/types";
 import { formatCurrency, formatDate, formatDuration } from "@/lib/utils";
-
-const MOOD_DOT: Record<Mood, string> = {
-  good: "bg-green-500",
-  okay: "bg-amber-400",
-  tough: "bg-red-400",
-};
+import { MOOD_DOT } from "@/lib/styles";
 
 const PAYMENT_BADGE: Record<Session["payment_status"], string> = {
   unpaid: "bg-amber-50 text-amber-700 border border-amber-200",

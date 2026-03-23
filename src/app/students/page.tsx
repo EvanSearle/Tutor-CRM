@@ -32,7 +32,7 @@ export default function StudentsPage() {
     getStudents().then((data) => {
       setStudents(data);
       setLoading(false);
-    });
+    }).catch(console.error);
   }, []);
 
   const counts = useMemo(() => {

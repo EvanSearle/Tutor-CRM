@@ -47,23 +47,23 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
       setPayments(pays);
       setPauseEvents(pevents);
       setLoading(false);
-    });
+    }).catch(console.error);
   }, [id]);
 
-  function handleAddSession(session: Session) {
-    addSession(session);
+  async function handleAddSession(session: Session) {
+    await addSession(session);
     setSessions((prev) => [session, ...prev]);
   }
 
-  function handleMarkPaid(sessionId: string) {
-    markSessionPaid(sessionId);
+  async function handleMarkPaid(sessionId: string) {
+    await markSessionPaid(sessionId);
     setSessions((prev) =>
       prev.map((s) => (s.id === sessionId ? { ...s, payment_status: "paid" as const } : s))
     );
   }
 
-  function handleSaveEdit(updated: Session) {
-    editSession(updated);
+  async function handleSaveEdit(updated: Session) {
+    await editSession(updated);
     setSessions((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
     setEditingSession(null);
   }
@@ -455,6 +455,7 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
               <Dialog.Title className="text-lg font-semibold text-ink">Edit Session</Dialog.Title>
               <button
                 onClick={() => setEditingSession(null)}
+                aria-label="Close"
                 className="text-ink-faint hover:text-ink transition-colors rounded-md p-1"
               >
                 <X size={18} />

@@ -10,14 +10,9 @@ import { MOCK_SESSIONS, MOCK_PAYMENTS } from "@/lib/mock/data";
 import { formatCurrency, daysSince, formatDate, formatDuration } from "@/lib/utils";
 import { StatusBadge } from "@/components/students/StatusBadge";
 import { cn } from "@/lib/utils";
+import { MOOD_DOT } from "@/lib/styles";
 
 type DrawerKey = "active" | "sessions" | "unpaid" | "revenue" | null;
-
-const MOOD_DOT: Record<Session["mood"], string> = {
-  good: "bg-green-500",
-  okay: "bg-amber-400",
-  tough: "bg-red-400",
-};
 
 export default function DashboardPage() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
@@ -33,7 +28,7 @@ export default function DashboardPage() {
       setMetrics(m);
       setStudents(s);
       setLoading(false);
-    });
+    }).catch(console.error);
   }, []);
 
   function getStudent(id: string) {
@@ -117,7 +112,7 @@ export default function DashboardPage() {
         {/* Header */}
         <div>
           <h1 className="text-2xl font-semibold text-ink">Dashboard</h1>
-          <p className="text-sm text-ink-muted mt-0.5">Friday, March 20, 2026</p>
+          <p className="text-sm text-ink-muted mt-0.5">{new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
         </div>
 
         {/* Metric cards */}

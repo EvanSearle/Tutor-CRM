@@ -17,11 +17,21 @@ export interface Student {
   hourly_rate: number;
   currency: string;
   status: StudentStatus;
+  pause_reason?: string;
   source: string;
   notes: string;
   tags: string[];
   created_at: string;
   updated_at: string;
+}
+
+export interface PauseEvent {
+  id: string;
+  student_id: string;
+  tutor_id: string;
+  action: "paused" | "unpaused";
+  reason: string;
+  timestamp: string;
 }
 
 export interface Session {

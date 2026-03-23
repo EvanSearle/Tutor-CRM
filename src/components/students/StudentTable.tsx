@@ -104,4 +104,3 @@ export function StudentTable({ students, sessions }: StudentTableProps) {
   );
 }
 
-export { formatDate };

@@ -31,9 +31,12 @@ const COLUMNS: { key: StudentStatus; label: string; color: string; headerBg: str
   { key: "prospect", label: "Prospect", color: "text-purple-700", headerBg: "bg-purple-50 border-purple-100" },
   { key: "trial",    label: "Trial",    color: "text-blue-700",   headerBg: "bg-blue-50 border-blue-100"   },
   { key: "active",   label: "Active",   color: "text-teal-700",   headerBg: "bg-teal-50 border-teal-100"   },
-  { key: "paused",   label: "Paused",   color: "text-amber-700",  headerBg: "bg-amber-50 border-amber-100" },
   { key: "churned",  label: "Churned",  color: "text-red-700",    headerBg: "bg-red-50 border-red-100"     },
 ];
+
+function visualColumn(status: StudentStatus): StudentStatus {
+  return status === "paused" ? "active" : status;
+}
 
 // ── Card content (shared between sortable card + overlay) ───────────────────
 function StudentCard({ student, sessions }: { student: Student; sessions: Session[] }) {
@@ -47,13 +50,20 @@ function StudentCard({ student, sessions }: { student: Student; sessions: Sessio
 
   return (
     <div className="bg-white border border-surface-border rounded-lg p-3 cursor-grab active:cursor-grabbing select-none shadow-sm">
-      <Link
-        href={`/students/${student.id}`}
-        onClick={(e) => e.stopPropagation()}
-        className="text-sm font-medium text-ink hover:text-brand-teal transition-colors leading-snug block"
-      >
-        {student.name}
-      </Link>
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <Link
+          href={`/students/${student.id}`}
+          onClick={(e) => e.stopPropagation()}
+          className="text-sm font-medium text-ink hover:text-brand-teal transition-colors leading-snug"
+        >
+          {student.name}
+        </Link>
+        {student.status === "paused" && (
+          <span className="text-[10px] font-medium px-1.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded">
+            Paused
+          </span>
+        )}
+      </div>
       <p className="text-xs text-ink-faint mt-0.5">
         {student.grade}{student.subjects.length > 0 && ` · ${student.subjects.join(", ")}`}
       </p>
@@ -167,7 +177,7 @@ export default function PipelinePage() {
     getStudents().then((data) => {
       setStudents(data);
       setLoading(false);
-    });
+    }).catch(console.error);
   }, []);
 
   function handleDragStart(event: DragStartEvent) {
@@ -185,24 +195,27 @@ export default function PipelinePage() {
     if (!activeStudent) return;
 
     const overIsColumn = COLUMNS.some((c) => c.key === overId);
-    const overColumnKey: StudentStatus = overIsColumn
+    const rawOverColumnKey: StudentStatus = overIsColumn
       ? (overId as StudentStatus)
       : (students.find((s) => s.id === overId)?.status ?? activeStudent.status);
+    // Treat paused students as belonging to the active column
+    const overColumnKey = visualColumn(rawOverColumnKey);
+    const activeColumnKey = visualColumn(activeStudent.status);
 
     setStudents((prev) => {
       const activeIndex = prev.findIndex((s) => s.id === activeId);
 
       if (overIsColumn) {
         // Hovering over an empty column — just change status
-        if (activeStudent.status === overColumnKey) return prev;
+        if (activeColumnKey === overColumnKey) return prev;
         return prev.map((s) => s.id === activeId ? { ...s, status: overColumnKey } : s);
       }
 
       const overIndex = prev.findIndex((s) => s.id === overId);
       if (overIndex === -1) return prev;
 
-      if (activeStudent.status === overColumnKey) {
-        // Same column — reorder
+      if (activeColumnKey === overColumnKey) {
+        // Same column — reorder (preserve existing status, including "paused")
         return arrayMove(prev, activeIndex, overIndex);
       }
 
@@ -218,7 +231,13 @@ export default function PipelinePage() {
     const studentId = String(event.active.id);
     setActiveId(null);
     const finalStudent = students.find((s) => s.id === studentId);
-    if (finalStudent) await updateStudentStatus(studentId, finalStudent.status);
+    if (!finalStudent) return;
+    try {
+      await updateStudentStatus(studentId, finalStudent.status);
+    } catch (err) {
+      console.error(err);
+      setStudents(studentsSnapshot);
+    }
   }
 
   function handleDragCancel() {
@@ -233,7 +252,7 @@ export default function PipelinePage() {
       <div className="space-y-4 animate-pulse">
         <div className="h-7 w-32 bg-surface-border rounded" />
         <div className="flex gap-4 overflow-hidden">
-          {Array.from({ length: 5 }).map((_, i) => (
+          {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="w-64 flex-shrink-0 h-64 bg-surface-border rounded-xl" />
           ))}
         </div>
@@ -263,7 +282,9 @@ export default function PipelinePage() {
             <Column
               key={col.key}
               col={col}
-              students={students.filter((s) => s.status === col.key)}
+              students={col.key === "active"
+                ? students.filter((s) => s.status === "active" || s.status === "paused")
+                : students.filter((s) => s.status === col.key)}
               sessions={sessions}
             />
           ))}

@@ -15,9 +15,16 @@ export function formatCurrency(amount: number, currency = "CAD"): string {
 
 export function daysSince(dateStr: string): number {
   const date = new Date(dateStr);
-  const today = new Date("2026-03-20");
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
   const diff = today.getTime() - date.getTime();
   return Math.floor(diff / (1000 * 60 * 60 * 24));
+}
+
+export function getOutstandingBalance(sessions: { payment_status: string; amount_due: number }[]): number {
+  return sessions
+    .filter((s) => s.payment_status === "unpaid" || s.payment_status === "invoiced")
+    .reduce((sum, s) => sum + s.amount_due, 0);
 }
 
 export function formatDate(dateStr: string): string {
@@ -36,5 +43,5 @@ export function formatDuration(minutes: number): string {
 }
 
 export function generateId(): string {
-  return Math.random().toString(36).slice(2, 11);
+  return crypto.randomUUID();
 }

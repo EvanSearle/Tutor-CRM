@@ -1,4 +1,4 @@
-import type { Student, Session, Reminder, Payment } from "@/types";
+import type { Student, Session, Reminder, Payment, PauseEvent } from "@/types";
 
 export const MOCK_STUDENTS: Student[] = [
   {
@@ -109,6 +109,7 @@ export const MOCK_STUDENTS: Student[] = [
     hourly_rate: 70,
     currency: "CAD",
     status: "paused",
+    pause_reason: "Family travelling until April. Resuming after the break.",
     source: "Referral",
     notes: "Family travelling until April. Resuming after the break.",
     tags: [],
@@ -155,9 +156,10 @@ export const MOCK_STUDENTS: Student[] = [
   },
 ];
 
-// Helper: date string X days before today (2026-03-20)
+// Helper: date string X days before today
 function daysAgo(n: number): string {
-  const d = new Date("2026-03-20");
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
   d.setDate(d.getDate() - n);
   return d.toISOString().split("T")[0];
 }
@@ -420,6 +422,17 @@ export const MOCK_REMINDERS: Reminder[] = [
     due_date: daysAgo(-5), // 5 days from now
     completed: true,
     created_at: daysAgo(20) + "T09:00:00Z",
+  },
+];
+
+export const MOCK_PAUSE_EVENTS: PauseEvent[] = [
+  {
+    id: "pe1",
+    student_id: "s6",
+    tutor_id: "t1",
+    action: "paused",
+    reason: "Family travelling until April. Resuming after the break.",
+    timestamp: "2026-02-28T10:00:00Z",
   },
 ];
 

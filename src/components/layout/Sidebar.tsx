@@ -20,6 +20,10 @@ const NAV_ITEMS = [
 export function Sidebar() {
   const pathname = usePathname();
 
+  function isNavActive(href: string) {
+    return href === "/" ? pathname === "/" : pathname.startsWith(href);
+  }
+
   return (
     <>
       {/* Desktop sidebar */}
@@ -35,11 +39,7 @@ export function Sidebar() {
         {/* Nav */}
         <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
           {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
-            const isActive =
-              href === "/"
-                ? pathname === "/"
-                : pathname.startsWith(href);
-
+            const isActive = isNavActive(href);
             return (
               <Link
                 key={href}
@@ -67,11 +67,7 @@ export function Sidebar() {
       {/* Mobile bottom nav */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-surface-border z-40 flex">
         {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
-          const isActive =
-            href === "/"
-              ? pathname === "/"
-              : pathname.startsWith(href);
-
+          const isActive = isNavActive(href);
           return (
             <Link
               key={href}
