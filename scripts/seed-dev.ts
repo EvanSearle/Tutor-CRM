@@ -1,0 +1,87 @@
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  "https://adzwidnsahgoumqakztp.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFkendpZG5zYWhnb3VtcWFrenRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyOTQ3OTcsImV4cCI6MjA4OTg3MDc5N30.HthANRWy7Pf1eVg_uJDtjkkIvMl1CLJDacy8T3ABKR0"
+);
+
+function daysAgo(n: number): string {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - n);
+  return d.toISOString().split("T")[0];
+}
+
+const students = [
+  { id: "s1", tutor_id: "t1", name: "Jamie Chen", grade: "Grade 10", subjects: ["Math", "Physics"], student_email: "jamie.chen@email.com", parent_name: "Linda Chen", parent_email: "linda.chen@email.com", parent_phone: "416-555-0101", hourly_rate: 85, currency: "CAD", status: "active", pause_reason: null, source: "Referral", notes: "Strong in algebra, struggles with trigonometry. Prefers visual explanations.", tags: ["STEM", "university-prep"], created_at: "2025-09-01T10:00:00Z", updated_at: "2026-03-10T14:00:00Z" },
+  { id: "s2", tutor_id: "t1", name: "Marcus Williams", grade: "Grade 8", subjects: ["English", "History"], student_email: "", parent_name: "Diane Williams", parent_email: "diane.w@email.com", parent_phone: "416-555-0202", hourly_rate: 75, currency: "CAD", status: "active", pause_reason: null, source: "Website", notes: "Great writer but needs help with essay structure.", tags: ["humanities"], created_at: "2025-10-15T10:00:00Z", updated_at: "2026-03-12T09:00:00Z" },
+  { id: "s3", tutor_id: "t1", name: "Sofia Patel", grade: "Grade 12", subjects: ["Chemistry", "Biology"], student_email: "sofia.patel@email.com", parent_name: "Raj Patel", parent_email: "raj.patel@email.com", parent_phone: "416-555-0303", hourly_rate: 90, currency: "CAD", status: "active", pause_reason: null, source: "Referral", notes: "Aiming for pre-med. Needs strong organic chemistry foundation.", tags: ["STEM", "university-prep", "pre-med"], created_at: "2025-08-20T10:00:00Z", updated_at: "2026-03-15T11:00:00Z" },
+  { id: "s4", tutor_id: "t1", name: "Ethan Kowalski", grade: "Grade 9", subjects: ["Math"], student_email: "", parent_name: "Anna Kowalski", parent_email: "anna.k@email.com", parent_phone: "647-555-0404", hourly_rate: 75, currency: "CAD", status: "trial", pause_reason: null, source: "Kijiji", notes: "First session went well. Needs confidence boost more than content review.", tags: [], created_at: "2026-03-10T10:00:00Z", updated_at: "2026-03-10T10:00:00Z" },
+  { id: "s5", tutor_id: "t1", name: "Nadia Rousseau", grade: "Grade 11", subjects: ["French", "English"], student_email: "nadia.r@email.com", parent_name: "Claire Rousseau", parent_email: "claire.r@email.com", parent_phone: "514-555-0505", hourly_rate: 80, currency: "CAD", status: "prospect", pause_reason: null, source: "Instagram", notes: "Reached out last week. Parents want to start after spring break.", tags: [], created_at: "2026-03-15T10:00:00Z", updated_at: "2026-03-15T10:00:00Z" },
+  { id: "s6", tutor_id: "t1", name: "Tyler Brooks", grade: "Grade 7", subjects: ["Math", "Science"], student_email: "", parent_name: "Kevin Brooks", parent_email: "kevin.b@email.com", parent_phone: "905-555-0606", hourly_rate: 70, currency: "CAD", status: "paused", pause_reason: "Family travelling until April. Resuming after the break.", source: "Referral", notes: "Family travelling until April. Resuming after the break.", tags: [], created_at: "2025-11-01T10:00:00Z", updated_at: "2026-02-28T10:00:00Z" },
+  { id: "s7", tutor_id: "t1", name: "Aisha Mbeki", grade: "Grade 10", subjects: ["Math"], student_email: "aisha.m@email.com", parent_name: "Grace Mbeki", parent_email: "grace.m@email.com", parent_phone: "416-555-0707", hourly_rate: 80, currency: "CAD", status: "active", pause_reason: null, source: "School board", notes: "IEP accommodations. Extended time, prefers written instructions.", tags: ["IEP", "accommodations"], created_at: "2025-09-15T10:00:00Z", updated_at: "2026-03-18T10:00:00Z" },
+  { id: "s8", tutor_id: "t1", name: "Ben Hartley", grade: "Grade 12", subjects: ["English", "Philosophy"], student_email: "ben.h@email.com", parent_name: "Susan Hartley", parent_email: "susan.h@email.com", parent_phone: "416-555-0808", hourly_rate: 85, currency: "CAD", status: "churned", pause_reason: null, source: "Website", notes: "Stopped after 3 sessions — schedule conflict. Good student.", tags: [], created_at: "2025-12-01T10:00:00Z", updated_at: "2026-01-15T10:00:00Z" },
+];
+
+const sessions = [
+  { id: "sess1", student_id: "s1", tutor_id: "t1", date: daysAgo(3), duration_minutes: 60, notes: "Worked through trig identities. She's getting it — big breakthrough on sine/cosine proofs.", mood: "good", payment_status: "unpaid", amount_due: 85, created_at: daysAgo(3) + "T14:00:00Z" },
+  { id: "sess2", student_id: "s1", tutor_id: "t1", date: daysAgo(10), duration_minutes: 90, notes: "Mid-term prep. Covered quadratics and systems of equations. Feeling confident.", mood: "good", payment_status: "paid", amount_due: 127.5, created_at: daysAgo(10) + "T14:00:00Z" },
+  { id: "sess3", student_id: "s1", tutor_id: "t1", date: daysAgo(17), duration_minutes: 60, notes: "Rough session — she was tired from exams. Kept it light, reviewed past material.", mood: "tough", payment_status: "paid", amount_due: 85, created_at: daysAgo(17) + "T14:00:00Z" },
+  { id: "sess4", student_id: "s1", tutor_id: "t1", date: daysAgo(24), duration_minutes: 60, notes: "Started new chapter on vectors. Good foundation from physics class.", mood: "okay", payment_status: "paid", amount_due: 85, created_at: daysAgo(24) + "T14:00:00Z" },
+  { id: "sess5", student_id: "s2", tutor_id: "t1", date: daysAgo(5), duration_minutes: 60, notes: "Essay on WW2 causes. Strong argument but thesis needs sharpening. Rewrote intro together.", mood: "okay", payment_status: "unpaid", amount_due: 75, created_at: daysAgo(5) + "T16:00:00Z" },
+  { id: "sess6", student_id: "s2", tutor_id: "t1", date: daysAgo(12), duration_minutes: 60, notes: "Shakespeare close reading. He's more engaged than I expected — good instincts for subtext.", mood: "good", payment_status: "paid", amount_due: 75, created_at: daysAgo(12) + "T16:00:00Z" },
+  { id: "sess7", student_id: "s2", tutor_id: "t1", date: daysAgo(26), duration_minutes: 60, notes: "Paragraph structure workshop. Topic sentences still vague but improving.", mood: "okay", payment_status: "paid", amount_due: 75, created_at: daysAgo(26) + "T16:00:00Z" },
+  { id: "sess8", student_id: "s3", tutor_id: "t1", date: daysAgo(2), duration_minutes: 90, notes: "Organic chemistry: nomenclature and functional groups. She's fast — moved through 3 topics.", mood: "good", payment_status: "unpaid", amount_due: 135, created_at: daysAgo(2) + "T11:00:00Z" },
+  { id: "sess9", student_id: "s3", tutor_id: "t1", date: daysAgo(9), duration_minutes: 90, notes: "Bio: cell division and mitosis diagrams. Made flashcard deck together.", mood: "good", payment_status: "invoiced", amount_due: 135, created_at: daysAgo(9) + "T11:00:00Z" },
+  { id: "sess10", student_id: "s3", tutor_id: "t1", date: daysAgo(16), duration_minutes: 60, notes: "Practice test debrief. Lost marks on stoichiometry — need to revisit mole calculations.", mood: "tough", payment_status: "paid", amount_due: 90, created_at: daysAgo(16) + "T11:00:00Z" },
+  { id: "sess11", student_id: "s3", tutor_id: "t1", date: daysAgo(30), duration_minutes: 90, notes: "Intro session — assessed knowledge gaps. Very strong student, just needs exam strategy.", mood: "good", payment_status: "paid", amount_due: 135, created_at: daysAgo(30) + "T11:00:00Z" },
+  { id: "sess12", student_id: "s4", tutor_id: "t1", date: daysAgo(7), duration_minutes: 60, notes: "Trial session. Math anxiety is real but he warmed up by the end. Positive sign.", mood: "okay", payment_status: "paid", amount_due: 75, created_at: daysAgo(7) + "T15:00:00Z" },
+  { id: "sess13", student_id: "s7", tutor_id: "t1", date: daysAgo(4), duration_minutes: 75, notes: "Fractions and ratios. Used visual models throughout — she responds well to colour-coding.", mood: "good", payment_status: "unpaid", amount_due: 100, created_at: daysAgo(4) + "T13:00:00Z" },
+  { id: "sess14", student_id: "s7", tutor_id: "t1", date: daysAgo(11), duration_minutes: 75, notes: "Algebra intro — variables and expressions. Went slower to respect her pace.", mood: "okay", payment_status: "paid", amount_due: 100, created_at: daysAgo(11) + "T13:00:00Z" },
+  { id: "sess15", student_id: "s7", tutor_id: "t1", date: daysAgo(25), duration_minutes: 60, notes: "Number sense and place value review. Strong conceptual understanding.", mood: "good", payment_status: "paid", amount_due: 80, created_at: daysAgo(25) + "T13:00:00Z" },
+  { id: "sess16", student_id: "s8", tutor_id: "t1", date: daysAgo(75), duration_minutes: 60, notes: "Essay analysis. Bright kid, insightful observations about Camus.", mood: "good", payment_status: "paid", amount_due: 85, created_at: daysAgo(75) + "T10:00:00Z" },
+  { id: "sess17", student_id: "s8", tutor_id: "t1", date: daysAgo(82), duration_minutes: 60, notes: "Intro session. Covered essay structure and literary devices.", mood: "okay", payment_status: "paid", amount_due: 85, created_at: daysAgo(82) + "T10:00:00Z" },
+];
+
+const reminders = [
+  { id: "r1", student_id: "s1", tutor_id: "t1", note: "Send Jamie's practice test for trig before next session", due_date: daysAgo(-1), completed: false, created_at: daysAgo(3) + "T15:00:00Z" },
+  { id: "r2", student_id: "s2", tutor_id: "t1", note: "Follow up on Marcus's WW2 essay — ask if he revised the thesis", due_date: daysAgo(2), completed: false, created_at: daysAgo(5) + "T17:00:00Z" },
+  { id: "r3", student_id: "s3", tutor_id: "t1", note: "Invoice Sofia for last two sessions", due_date: daysAgo(4), completed: false, created_at: daysAgo(9) + "T12:00:00Z" },
+  { id: "r4", student_id: "s4", tutor_id: "t1", note: "Confirm with Anna whether Ethan wants to continue after trial", due_date: daysAgo(0), completed: false, created_at: daysAgo(7) + "T16:00:00Z" },
+  { id: "r5", student_id: "s6", tutor_id: "t1", note: "Reach out to Kevin Brooks about resuming sessions in April", due_date: daysAgo(-5), completed: true, created_at: daysAgo(20) + "T09:00:00Z" },
+];
+
+const pauseEvents = [
+  { id: "pe1", student_id: "s6", tutor_id: "t1", action: "paused", reason: "Family travelling until April. Resuming after the break.", timestamp: "2026-02-28T10:00:00Z" },
+];
+
+const payments = [
+  { id: "p1", student_id: "s1", tutor_id: "t1", amount: 297.5, currency: "CAD", method: "e-Transfer", note: "Payment for 3 sessions in Feb", paid_at: daysAgo(10) + "T10:00:00Z", session_ids: ["sess2", "sess3", "sess4"] },
+  { id: "p2", student_id: "s3", tutor_id: "t1", amount: 225, currency: "CAD", method: "e-Transfer", note: "Sessions from Feb", paid_at: daysAgo(12) + "T09:00:00Z", session_ids: ["sess10", "sess11"] },
+];
+
+async function seed() {
+  console.log("Seeding students...");
+  const { error: e1 } = await supabase.from("students").insert(students);
+  if (e1) { console.error("students:", e1.message); process.exit(1); }
+
+  console.log("Seeding sessions...");
+  const { error: e2 } = await supabase.from("sessions").insert(sessions);
+  if (e2) { console.error("sessions:", e2.message); process.exit(1); }
+
+  console.log("Seeding reminders...");
+  const { error: e3 } = await supabase.from("reminders").insert(reminders);
+  if (e3) { console.error("reminders:", e3.message); process.exit(1); }
+
+  console.log("Seeding pause_events...");
+  const { error: e4 } = await supabase.from("pause_events").insert(pauseEvents);
+  if (e4) { console.error("pause_events:", e4.message); process.exit(1); }
+
+  console.log("Seeding payments...");
+  const { error: e5 } = await supabase.from("payments").insert(payments);
+  if (e5) { console.error("payments:", e5.message); process.exit(1); }
+
+  console.log("Done! Dev database seeded.");
+}
+
+seed();
