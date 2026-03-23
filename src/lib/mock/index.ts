@@ -157,3 +157,8 @@ export async function toggleReminder(id: string): Promise<void> {
   );
   return delay(undefined);
 }
+
+export async function deleteReminder(id: string): Promise<void> {
+  reminders = reminders.filter((r) => r.id !== id);
+  return delay(undefined);
+}
